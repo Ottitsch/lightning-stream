@@ -16,14 +16,13 @@ class BlitzortungClient:
     def __init__(self, uri="wss://ws1.blitzortung.org/"):
         self.uri = uri
         self.websocket = None
-        self.running = False
 
     def decode_blitzortung_data(self, data):
         """Decode obfuscated Blitzortung data"""
         try:
             if isinstance(data, str):
                 data = data.encode()
-            
+
             e = {}
             d = list(data.decode())
             c = d[0]
@@ -31,7 +30,7 @@ class BlitzortungClient:
             g = [c]
             h = 256
             o = h
-            
+
             for i in range(1, len(d)):
                 a = ord(d[i])
                 a = d[i] if h > a else e.get(a, f + c)
@@ -40,7 +39,7 @@ class BlitzortungClient:
                 e[o] = f + c
                 o += 1
                 f = a
-            
+
             decoded = ''.join(g)
             return json.loads(decoded)
         except Exception as e:
@@ -52,32 +51,29 @@ class BlitzortungClient:
             print(f"Connecting to {self.uri}...")
             async with websockets.connect(self.uri) as websocket:
                 self.websocket = websocket
-                self.running = True
                 print("Connected! Sending subscription message...")
-                
+
                 # Send subscription message to start receiving data
                 subscription = json.dumps({"a": 111})
                 await websocket.send(subscription)
                 print("Subscription sent! Listening for lightning data...")
                 print("-" * 60)
-                print("Format: [Time] ⚡ Latitude, Longitude | Strike Time | Polarity | Region | Stations | Delay")
+                print("Format: [Time] ΓÜí Latitude, Longitude | Strike Time | Polarity | Region | Stations | Delay")
                 print("-" * 60)
-                
+
                 async for message in websocket:
                     await self.handle_message(message)
-                    
+
         except websockets.exceptions.ConnectionClosed:
             print("Connection closed by server")
         except Exception as e:
             print(f"Error: {e}")
-        finally:
-            self.running = False
 
     async def handle_message(self, message):
         """Process incoming WebSocket messages"""
         try:
             timestamp = datetime.now().strftime("%H:%M:%S")
-            
+
             # Try to parse as JSON first
             try:
                 data = json.loads(message)
@@ -90,7 +86,7 @@ class BlitzortungClient:
                 else:
                     # If not decodable, print as raw text
                     print(f"[{timestamp}] Raw: {message[:100]}{'...' if len(message) > 100 else ''}")
-            
+
         except Exception as e:
             print(f"[{timestamp}] Error: {e}")
 
@@ -104,7 +100,7 @@ class BlitzortungClient:
             region = data.get('region', 0)
             stations = len(data.get('sig', []))
             delay = data.get('delay', 0)
-            
+
             # Try to convert Blitzortung timestamp to readable time
             strike_time = "??:??:??"
             if time_us:
@@ -113,30 +109,25 @@ class BlitzortungClient:
                     # First try as microseconds
                     if time_us > 1e15:  # Very large number, try nanoseconds
                         dt = datetime.fromtimestamp(time_us / 1_000_000_000)
-                    elif time_us > 1e12:  # Large number, try microseconds  
+                    elif time_us > 1e12:  # Large number, try microseconds
                         dt = datetime.fromtimestamp(time_us / 1_000_000)
                     elif time_us > 1e9:   # Normal Unix timestamp
                         dt = datetime.fromtimestamp(time_us)
                     else:
                         dt = None
-                    
+
                     if dt:
                         strike_time = dt.strftime("%H:%M:%S")
                 except:
                     # If all else fails, show relative time from now
                     strike_time = f"~{delay:.0f}s ago"
-            
-            # Format polarity 
+
+            # Format polarity
             pol_str = "+" if pol == 1 else "-" if pol == 0 else "?"
-            
-            print(f"[{timestamp}] ⚡ {lat:8.4f}, {lon:9.4f} | {strike_time} | {pol_str} | R{region} | {stations:2d} stations | {delay:.1f}s delay")
+
+            print(f"[{timestamp}] ΓÜí {lat:8.4f}, {lon:9.4f} | {strike_time} | {pol_str} | R{region} | {stations:2d} stations | {delay:.1f}s delay")
         else:
             print(f"[{timestamp}] Non-dict data: {str(data)[:80]}{'...' if len(str(data)) > 80 else ''}")
-
-    def stop(self):
-        """Stop the client"""
-        self.running = False
-        print("\nShutting down...")
 
 def signal_handler(signum, frame):
     """Handle Ctrl+C gracefully"""
@@ -147,9 +138,9 @@ async def main():
     """Main function"""
     # Set up signal handler for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     client = BlitzortungClient()
-    
+
     try:
         await client.connect_and_listen()
     except KeyboardInterrupt:
@@ -161,7 +152,7 @@ if __name__ == "__main__":
     print("Blitzortung Lightning Detection WebSocket Client")
     print("Press Ctrl+C to exit")
     print("=" * 60)
-    
+
     # Check if websockets is available
     try:
         import websockets
@@ -169,6 +160,6 @@ if __name__ == "__main__":
         print("Error: 'websockets' library not found.")
         print("Install it with: pip install websockets")
         sys.exit(1)
-    
+
     # Run the client
     asyncio.run(main())
